@@ -1,0 +1,8 @@
+terraform.tfvars
+*.tfstate
+*.tfstate.lock.info
+*.tfstate.backup
+*.tfplan
+*.hcl
+.terraform
+docker/Dockerfile
