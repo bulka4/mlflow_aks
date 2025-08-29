@@ -15,16 +15,6 @@ resource "azurerm_log_analytics_workspace" "law" {
   retention_in_days   = 30
 }
 
-# Below commented lines are to delete later on.
-/*
-# Generate ssh keys for connecting from our local computer to AKS worker nodes.
-module "ssh"{
-  source = "./modules/ssh"
-  resource_group_id = module.resource_group.id
-  resource_group_location = module.resource_group.location
-  ssh_path = var.ssh_path
-}
-*/
 
 # AKS Cluster
 resource "azurerm_kubernetes_cluster" "aks" {
@@ -57,17 +47,6 @@ resource "azurerm_kubernetes_cluster" "aks" {
   # Enable RBAC authorization in a cluster. We will be able to create Roles and Roles Bindings in a cluster.
   role_based_access_control_enabled = true
 
-# Below commented lines to delete later on.
-/*
-  # Add the public SSH key to the authorized keys. That will enable connecting to the cluster's worker nodes.
-  linux_profile {
-    admin_username = var.vm_username
-    ssh_key {
-      key_data = module.ssh.public_key
-    }
-  }
-*/
-
   network_profile {
     network_plugin = "azure"          # azure CNI; use "kubenet" if desired
     load_balancer_sku = "standard"
@@ -83,7 +62,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
 }
 
 
-# Create an ACR where we will be storing a Docker image used for deploying the MLflow Tracking Server.
+# Create an ACR where we will be storing a Docker image used for deploying the MLflow Tracking Server and running MLflow project.
 module "acr" {
   source = "./modules/acr"
   acr_name                = var.acr_name
@@ -94,7 +73,7 @@ module "acr" {
 
 # Service Principal for authentication. It is going to have assigned the following roles and scopes:
 # - Role 'acrpush' with scope for ACR - Enable pulling images from ACR when deploying resources on Kubernetes
-# - Role 'Contributor' with score for ACR - Enable pushing images to ACR using Azure CLI
+# - Role 'Contributor' with scope for ACR - Enable pushing images to ACR using Azure CLI
 # - Role 'Azure Kubernetes Service Cluster User Role' with scope for AKS - Enable getting credentials to AKS (creating .kube/config file)
 #   using the 'az aks get-credentials' command.
 
@@ -114,7 +93,7 @@ module "artifact_store" {
   source = "./modules/storage_account"
   resource_group_name = module.resource_group.name
   resource_group_location = module.resource_group.location
-  storage_account_name = var.storage_account_name
+  storage_account_name = var.storage_account_artifacts_name
 }
 
 
@@ -126,29 +105,115 @@ module "artifact_store_container" {
 }
 
 
-# Create a Dockerfile which will be saved on the localhost and which can be used to create an image for interacting with AKS
-locals {
-  dockerfile = templatefile("template.Dockerfile", {
-    username                          = var.vm_username
-    acr_url                           = module.acr.url
-    acr_sp_id                         = module.service_principal.client_id
-    acr_sp_password                   = module.service_principal.client_password
-    acr_name                          = module.acr.name
-    mlflow_container                  = module.artifact_store_container.name
-    mlflow_storage_account_name       = module.artifact_store.name
-    mlflow_storage_account_access_key = module.artifact_store.primary_access_key
-    tenant_id                         = data.azurerm_client_config.current.tenant_id
-    subscription_id                   = data.azurerm_client_config.current.subscription_id
-    rg_name                           = module.resource_group.name
-    aks_name                          = azurerm_kubernetes_cluster.aks.name
-  })
+# File share for MLflow projects
+module "sa_projects_file_share" {
+  source = "./modules/sa_file_share"
+  name = "mlflow-projects"
+  storage_account_name = module.artifact_store.name
 }
 
 
-# Save the Dockerfile on the localhost
+# Create files content which will be saved on the localhost:
+# - Dockerfile for creating an image for interacting with AKS
+# - values.yaml file for the MLflow Helm chart
+# - Files for the MLflow project:
+#   - backend_config.yaml 
+#   - MLproject
+locals {
+  namespace                     = "mlflow"                # Name of the Kubernetes namespace where we will deploy all the MLflow resources
+  tracking_server_service_name  = "mlflow-service"        # Name of the Service which will be attached to the Pod running the MLflow Tracking Server
+  service_account_name          = "mlflow-sa"             # Name of the Service Account which will be created and used when running MLflow projects
+  mlproject_image_name          = "mlproject:latest"      # Name of the Docker image which will be used for the MLflow project
+  tracking_server_image_name    = "mlflow-server:latest"  # Name of the Docker image which will be used for the MLflow Tracking Server
+  acr_secret_name               = "acr-secret"            # Name of the Kubernetes secret which will be used for accessing ACR
+  
+  dockerfile = templatefile("template_files/docker/template.Dockerfile", {
+    rg_name         = module.resource_group.name
+    aks_name        = azurerm_kubernetes_cluster.aks.name
+
+    acr_sp_id       = module.service_principal.client_id
+    acr_sp_password = module.service_principal.client_password
+    acr_name        = module.acr.name
+    
+    tenant_id       = data.azurerm_client_config.current.tenant_id
+    subscription_id = data.azurerm_client_config.current.subscription_id
+    
+    mlproject_image_name          = local.mlproject_image_name
+    tracking_server_image_name    = local.tracking_server_image_name
+  })
+
+  values_setup = templatefile("template_files/mlflow_helm_chart/values-setup-template.yaml", {
+    namespace                     = local.namespace
+    tracking_server_service_name  = local.tracking_server_service_name
+    tracking_server_image_name    = local.tracking_server_image_name
+    service_account_name          = local.service_account_name
+    acr_secret_name               = local.acr_secret_name
+    
+    acr_url         = module.acr.url
+    acr_sp_id       = module.service_principal.client_id
+    acr_sp_password = module.service_principal.client_password
+
+    mlflow_storage_account_name       = module.artifact_store.name
+    mlflow_storage_account_access_key = module.artifact_store.primary_access_key
+    mlflow_container                  = module.artifact_store_container.name
+    sa_file_share_name                = module.sa_projects_file_share.name
+  })
+
+  values_project = templatefile("template_files/mlflow_helm_chart/values-project-template.yaml", {
+    namespace                     = local.namespace
+    service_account_name          = local.service_account_name
+    mlproject_image_name          = local.mlproject_image_name
+    acr_url                       = module.acr.url
+    tracking_server_service_name  = local.tracking_server_service_name
+  })
+
+
+
+/*
+  prepare_job_template = templatefile("template_files/docker/prepare_job_template.sh", {
+    tracking_server_service_name = local.tracking_server_service_name
+    namespace = local.namespace
+  })
+
+  backend_config = templatefile("template_files/mlflow_project/backend_config_template.json", {
+    acr_url                       = module.acr.url
+    namespace                     = local.namespace
+    service_account_name          = local.service_account_name
+    mlproject_image_name          = local.mlproject_image_name
+    tracking_server_service_name  = local.tracking_server_service_name
+  })
+
+  mlproject = templatefile("template_files/mlflow_project/MLproject-template", {
+    acr_url               = module.acr.url
+    mlproject_image_name  = local.mlproject_image_name
+  })
+
+  mlflow_job = templatefile("template_files/mlflow_project/mlflow-job-template.yaml", {
+    tracking_server_service_name  = local.tracking_server_service_name
+    namespace                     = local.namespace
+  })
+*/
+}
+
+
+# Save files on the localhost
 resource "local_file" "dockerfile" {
-  content = local.dockerfile
-  filename = "docker/Dockerfile"
+  # each.key - content to save in a file
+  # each.value - path where to save a file
+  for_each = {
+    0 = {content = local.dockerfile, path = "../docker/Dockerfile"}
+    1 = {content = local.values_setup, path = "../docker/helm_charts/mlflow_setup/values.yaml"}
+    2 = {content = local.values_project, path = "../docker/helm_charts/mlflow_project/values.yaml"}
+    
+    
+    # 1 = {content = local.prepare_job_template, path = "../docker/prepare_job_template.sh"}
+    # 5 = {content = local.backend_config, path = "../docker/mlflow_project/backend_config.json"}
+    # 6 = {content = local.mlproject, path = "../docker/mlflow_project/MLproject"}
+    # 7 = {content = local.mlflow_job, path = "../docker/mlflow_project/mlflow-job-template.yaml"}
+  }
+
+  content = each.value.content
+  filename = each.value.path
 }
 
 

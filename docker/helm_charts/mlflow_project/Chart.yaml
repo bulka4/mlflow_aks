@@ -1,0 +1,4 @@
+apiVersion: v2
+name: mlflow-project-job
+description: Helm chart for running a MLflow project in a local mode as a Job.
+version: 0.1.0

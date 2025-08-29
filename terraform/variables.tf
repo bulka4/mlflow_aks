@@ -50,8 +50,15 @@ variable "acr_name" {
   description = "Name of the created ACR."
 }
 
-variable "storage_account_name" {
+variable "storage_account_artifacts_name" {
   type    = string
   default = "mlflowartifactsbulka"
   description = "Name of the created Storage Account which will act as an artifact store."
+}
+
+
+variable "storage_account_projects_name" {
+  type    = string
+  default = "mlflowartifactsbulka"
+  description = "Name of the created Storage Account where we will be saving MLflow projects."
 }

@@ -5,4 +5,6 @@ terraform.tfvars
 *.tfplan
 *.hcl
 .terraform
-docker/Dockerfile
+Dockerfile
+values.yaml
+backup_files

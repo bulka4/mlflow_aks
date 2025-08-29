@@ -1,0 +1,15 @@
+# A Service used by the MLflow Tracking Server Deployment
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.mlflow.trackingServerServiceName }}
+  namespace: {{ .Values.namespace }}
+spec:
+  type: LoadBalancer  # Or use Ingress
+  # type: ClusterIP # ClusterIP will be only for connectivity from inside of the cluster
+  selector:
+    app: mlflow
+  ports:
+  - port: 5000
+    targetPort: 5000

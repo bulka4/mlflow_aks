@@ -1,0 +1,22 @@
+name: mlflow-test
+
+entry_points:
+  train:
+    parameters:
+      experiment_name: 
+        type: string
+        default: lasso_test
+      alpha:
+        type: float
+        default: 0.1
+      max_iter: 
+        type: int
+        default: 10000
+    command: "python3 train.py --experiment_name {experiment_name} --alpha {alpha} --max_iter {max_iter}"
+
+  evaluate:
+    parameters:
+      experiment_name: 
+        type: string
+        default: lasso_test
+    command: "python3 evaluate.py --experiment_name {experiment_name}"

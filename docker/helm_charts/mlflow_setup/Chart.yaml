@@ -1,0 +1,11 @@
+apiVersion: v2
+name: mlflow-setup
+description: Helm chart for deploying resources needed for running MLflow projects as Jobs
+version: 0.1.0
+
+
+# Install additional dependencies - Bitnami MySQL. It will be used as a backend store for the MLflow Tracking Server.
+dependencies:
+  - name: mysql
+    version: 14.0.3
+    repository: https://charts.bitnami.com/bitnami

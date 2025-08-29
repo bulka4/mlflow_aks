@@ -1,0 +1,40 @@
+# When running a MLflow project in a Job deployed using the mlflow_project chart, MLproject files will be provided from Azure Storage Account
+# through a mounting. It works in this way:
+# - Use Volume claim in the Job running MLflow project
+# - Create a Volume claim and Volume linked to File share in Azure Storage Account
+# - Volume uses the secret created in the sa-secret.yaml template to connect to Storage Account
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: azurefile-pv
+  namespace: {{ .Values.namespace }}
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  csi:
+    driver: file.csi.azure.com
+    volumeHandle: {{ .Values.mlflowProjectMounting.storageAccountName }}#{{ .Values.mlflowProjectMounting.fileShareName }}
+    volumeAttributes:
+      shareName: {{ .Values.mlflowProjectMounting.fileShareName }}
+      storageAccount: {{ .Values.mlflowProjectMounting.storageAccountName }}
+    nodeStageSecretRef:
+      name: {{ .Values.mlflowProjectMounting.secretName }}
+      namespace: {{ .Values.namespace }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.mlflowProjectMounting.pvcName }}
+  namespace: {{ .Values.namespace }}
+spec:
+  accessModes:
+    - ReadWriteMany   # so multiple jobs can use it
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 100Gi
+  volumeName: azurefile-pv

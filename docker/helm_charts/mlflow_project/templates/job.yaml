@@ -1,0 +1,34 @@
+# Job for running a MLflow project.
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "mlflow-job.fullname" . }} # Unique name for the Job using the Chart name and Release name
+  namespace: {{ .Values.namespace }}
+spec:
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 2
+  template:
+    spec:
+      # Service Account used for reading a secret for accessing an image from ACR.
+      serviceAccountName: {{ .Values.serviceAccountName }}
+      containers:
+      - name: mlflow-job
+        image: {{ .Values.image }}
+        # Command to run a MLflow project
+        command: ["sh", "-c"]
+        args: 
+          - {{ .Values.command }}
+        env:
+        # Set up MLFLOW_TRACKING_URI env variable indicating URI of the Tracking Server to connect to.
+        - name: MLFLOW_TRACKING_URI
+          value: {{ .Values.mlflowTrackingUri }}
+        volumeMounts:
+        # Mount a volume linked to File share in Azure Storage Account containing MLflow project files to run
+        - name: azure-mlprojects
+          mountPath: /mnt/mlprojects
+      restartPolicy: Never
+      volumes:
+      - name: azure-mlprojects
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcName }}

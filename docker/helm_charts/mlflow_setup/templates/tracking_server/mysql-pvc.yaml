@@ -1,0 +1,14 @@
+# When installing MySQL chart with Helm we will use the following Volume Claim (it will be used by MySQL Pod)
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.mysql.primary.persistence.existingClaim }}
+  namespace: {{ .Values.namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.mySqlMounting.storageClass }}
+  resources:
+    requests:
+      storage: 8Gi
