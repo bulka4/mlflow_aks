@@ -221,7 +221,7 @@ MLflow project files are saved in the mlflow_project folder in this repo. Here i
 
 In the below subsections we can find more details about it:
 - **MLflow project Helm chart** - How the Helm chart works
-- **MLpoject file** - How the MLproject file looks like
+- **MLpoject file** - How the MLproject file looks like, what entrypoints it contains and how they work
 - **How to run multiple projects**
 - **values.yaml** - How to prepare the values.yaml file for the Helm chart
 
