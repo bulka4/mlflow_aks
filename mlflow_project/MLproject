@@ -3,20 +3,18 @@ name: mlflow-test
 entry_points:
   train:
     parameters:
-      experiment_name: 
-        type: string
-        default: lasso_test
       alpha:
         type: float
         default: 0.1
       max_iter: 
         type: int
         default: 10000
-    command: "python3 train.py --experiment_name {experiment_name} --alpha {alpha} --max_iter {max_iter}"
+    command: "python3 train.py --alpha {alpha} --max_iter {max_iter}"
 
   evaluate:
     parameters:
-      experiment_name: 
+      # We will evaluate the model from the latest run from the experiment specified by the experiment_name parameter.
+      experiment_name:
         type: string
         default: lasso_test
     command: "python3 evaluate.py --experiment_name {experiment_name}"

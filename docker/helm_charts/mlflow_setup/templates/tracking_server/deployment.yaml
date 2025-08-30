@@ -1,11 +1,4 @@
-# In this YAML manifest we:
-# - Run the 'mlflow server' command with proper arguments for starting the MLflow Tracking Server.
-# - Use the acrSecret.secretName secret for authentication when pulling a Docker Image from ACR
-# - Use the Docker Image we created and pushed to the ACR
-# - Create environment variables in a Pod with values from the mlflow.trackingServerSecretName secret created as well in this chart.
-#   They will be used by the MLflow Tracking Server for authentication to the artifact store (Storage Account) and backend store (MySQL).
-# - Deploy in the MLflow namespace
-# - Assign the app: mlflow label to created Deployment and Pods
+# Deployment for running MLflow Tracking Server.
 
 apiVersion: apps/v1
 kind: Deployment
@@ -33,6 +26,8 @@ spec:
         ports:
         - containerPort: 5000
         env:
+        # Create environment variables with values from the secret created as well in this chart. They will be used by the
+        # MLflow Tracking Server for authentication when connecting to the artifact store (Storage Account) and backend store (MySQL).
         - name: AZURE_STORAGE_CONNECTION_STRING
           valueFrom:
             secretKeyRef:
@@ -43,6 +38,7 @@ spec:
             secretKeyRef:
               name: {{ .Values.mlflow.trackingServerSecretName }}
               key: DB_URI
+        # Run the command to start the Tracking Server
         command: ["mlflow"]
         args:
           [

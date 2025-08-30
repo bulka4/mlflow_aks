@@ -10,7 +10,6 @@ import argparse
 # Parse arguments
 # -----------------------------
 parser = argparse.ArgumentParser()
-parser.add_argument("--experiment_name", type=str, required=True, help="Name of the experiment where to assign the model.")
 parser.add_argument("--alpha", type=float, required=True, help="The alpha parameter for the sklearn.linear_model.Lasso model.")
 parser.add_argument("--max_iter", type=int, required=True, help="The max_iter parameter for the sklearn.linear_model.Lasso model.")
 args = parser.parse_args()
@@ -28,14 +27,6 @@ y = 3 * X.squeeze() + 5 + np.random.randn(100) * 2  # linear relation with noise
 # Split into train/test
 # -----------------------------
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-
-# -----------------------------
-# Set the experiment
-# -----------------------------
-mlflow.set_experiment(args.experiment_name)
-
-# with mlflow.start_run():
 
 # -----------------------------
 # Train Lasso Regression

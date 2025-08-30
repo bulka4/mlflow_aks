@@ -7,7 +7,7 @@ mysql:
   primary:
     persistence:
       enabled: true
-      existingClaim: mysql-pvc # Use volume claim with this name (we will create it in this chart as well)
+      existingClaim: mysql-pvc # We will create this volume in this chart as well.
       storageClass: ""
   auth:
     rootPassword: abc123
@@ -16,8 +16,8 @@ mysql:
     username: mlflow    # custom user
     password: mlflow123 # custom user password
 
-# Storage class for PVC for MySQL backend store. The 'managed-csi' option causes that data will be stored in an Azure Disk (created on 
-# demand when creating this volume). It is used in the tracking_server > mysql-pvc.yaml file.
+# Storage class for PVC for MySQL backend store. The 'managed-csi' option causes that data will be stored in an Azure Disk. It will be created on 
+# demand when creating this volume and deleted when deleting the Volume. It is used in the tracking_server > mysql-pvc.yaml template.
 mySqlMounting:
   storageClass: managed-csi
 
@@ -38,14 +38,14 @@ mlflow:
   mlflowContainerName: ${mlflow_container}
 
 # Configuration for a Secret with credentials to ACR where we keep images used in:
-# - Tracking Server deployment (from the tracking_server folder in this chart)
-# - Service Account which will be used when running MLproject as a Job (that Job is deployed using another chart, the mlflow_project one)
+# - Tracking Server deployment (tracking_server > deployment.yaml template)
+# - Service Account which will be used in the Job running MLproject (that Job is deployed using another chart, the mlflow_project one)
 acrSecret:
-  secretName: ${acr_secret_name} # Name of the created secret
-  server: ${acr_url} # ACR URL (<registry-name>.azurecr.io)
-  username: ${acr_sp_id}  # Service Principal client ID
-  password: ${acr_sp_password} # Service Principal password
-  email: unused@example.com # It doesn't matter what we put here but it is needed
+  secretName: ${acr_secret_name}  # Name of the created secret
+  server: ${acr_url}              # ACR URL (<registry-name>.azurecr.io)
+  username: ${acr_sp_id}          # Service Principal client ID
+  password: ${acr_sp_password}    # Service Principal password
+  email: unused@example.com       # It doesn't matter what we put here but it is needed
 
 # Information about ACR and images it contains
 acr:
@@ -55,14 +55,13 @@ acr:
 
 # When running a MLflow project in a Job deployed using the mlflow_project chart, MLproject files will be provided from Azure Storage Account
 # through a mounting. It works in this way:
-# - Mount a Volume to the Job running MLflow project
-# - Volume uses a Azure file Storage Class to store data in a File share in Azure Storage Account
-# - Storage Class uses a secret to access Storage Account
+# - Use Volume claim in the Job running MLflow project
+# - Create a Volume claim and Volume linked to File share in Azure Storage Account
+# - Volume uses the secret created in the sa-secret.yaml template to connect to Storage Account
 # Below variables are related to this process.
 mlflowProjectMounting:
-  storageClassName: azurefiles # Name of the created Storage Class
-  pvcName: azurefiles-pvc # Name of the created PVC
-  secretName: sa-secret # Secret with credentials for accessing Storage Account
-  storageAccountName: ${mlflow_storage_account_name}
-  storageAccountKey: ${mlflow_storage_account_access_key}
-  fileShareName: ${sa_file_share_name}
+  pvcName: azurefiles-pvc                                 # Name of the created PVC
+  secretName: sa-secret                                   # Secret with credentials for accessing Storage Account
+  storageAccountName: ${mlflow_storage_account_name}      # Name of the Storage Account used
+  storageAccountKey: ${mlflow_storage_account_access_key} # Access key to the Storage Account used
+  fileShareName: ${sa_file_share_name}                    # Name of the File share used in Storage Account

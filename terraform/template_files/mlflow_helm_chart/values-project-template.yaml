@@ -2,20 +2,19 @@ namespace: ${namespace}
 serviceAccountName: ${service_account_name}
 image: ${acr_url}/${mlproject_image_name}
 
-# Command to execute (mlflow run <path> -e <entrypoint-name> --param1 value1)
-command: "mlflow run mlflow_project -e train"
+# Command to execute of the format: "mlflow run <path> -e <entrypoint-name> --<param1> <value1> --env-manager local"
+# - <path> - Path to the MLflow project to run. File share in Azure Storage Account will be mounted to the Job on path
+#             Specified in the 'mountPath' parameter in Job's manifest. So if mountPath = /mnt/mlprojects and project is
+#             the File share at the mlflow_project path, then the <path> parameter here is /mnt/mlprojects/mlflow_project.
+# - <entrypoint-name> - Name of the entrypoint from the MLproject file to run
+# - <param1>, <value1> - Parameter with a value for the entrypoint
+# - "--env-manager local" - Indicates to use the local environment. We want to use it because in the Docker image which we
+#                           are using in the Job already contains prepared environment for running the MLflow project.
+# - --experiment-name - Indicates which experiment assign this run to.
+command: "mlflow run /mnt/mlprojects/mlflow_project -e train --env-manager local --experiment-name=lasso_test"
 
-# Path inside mounted storage
-# projectPath: /mnt/mlprojects/projectA
-
-# # Which entrypoint to run
-# entryPoint: train
-
-# # MLflow experiment
-# experimentName: lasso_experiment
-
-# MLflow server
+# MLflow server URI. It uses DNS name assigned by the Service linked to the Tracking Server deployment.
 mlflowTrackingUri: http://${tracking_server_service_name}.${namespace}.svc:5000
 
-# PVC name that mounts Azure Storage
+# PVC name that mounts File share in Azure Storage Account
 pvcName: azurefiles-pvc

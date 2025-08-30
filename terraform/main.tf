@@ -142,6 +142,7 @@ locals {
     tracking_server_image_name    = local.tracking_server_image_name
   })
 
+  # values.yaml file for the mlflow_setup chart
   values_setup = templatefile("template_files/mlflow_helm_chart/values-setup-template.yaml", {
     namespace                     = local.namespace
     tracking_server_service_name  = local.tracking_server_service_name
@@ -159,6 +160,7 @@ locals {
     sa_file_share_name                = module.sa_projects_file_share.name
   })
 
+  # values.yaml file for the mlflow_project chart
   values_project = templatefile("template_files/mlflow_helm_chart/values-project-template.yaml", {
     namespace                     = local.namespace
     service_account_name          = local.service_account_name
@@ -166,33 +168,6 @@ locals {
     acr_url                       = module.acr.url
     tracking_server_service_name  = local.tracking_server_service_name
   })
-
-
-
-/*
-  prepare_job_template = templatefile("template_files/docker/prepare_job_template.sh", {
-    tracking_server_service_name = local.tracking_server_service_name
-    namespace = local.namespace
-  })
-
-  backend_config = templatefile("template_files/mlflow_project/backend_config_template.json", {
-    acr_url                       = module.acr.url
-    namespace                     = local.namespace
-    service_account_name          = local.service_account_name
-    mlproject_image_name          = local.mlproject_image_name
-    tracking_server_service_name  = local.tracking_server_service_name
-  })
-
-  mlproject = templatefile("template_files/mlflow_project/MLproject-template", {
-    acr_url               = module.acr.url
-    mlproject_image_name  = local.mlproject_image_name
-  })
-
-  mlflow_job = templatefile("template_files/mlflow_project/mlflow-job-template.yaml", {
-    tracking_server_service_name  = local.tracking_server_service_name
-    namespace                     = local.namespace
-  })
-*/
 }
 
 
@@ -204,12 +179,6 @@ resource "local_file" "dockerfile" {
     0 = {content = local.dockerfile, path = "../docker/Dockerfile"}
     1 = {content = local.values_setup, path = "../docker/helm_charts/mlflow_setup/values.yaml"}
     2 = {content = local.values_project, path = "../docker/helm_charts/mlflow_project/values.yaml"}
-    
-    
-    # 1 = {content = local.prepare_job_template, path = "../docker/prepare_job_template.sh"}
-    # 5 = {content = local.backend_config, path = "../docker/mlflow_project/backend_config.json"}
-    # 6 = {content = local.mlproject, path = "../docker/mlflow_project/MLproject"}
-    # 7 = {content = local.mlflow_job, path = "../docker/mlflow_project/mlflow-job-template.yaml"}
   }
 
   content = each.value.content

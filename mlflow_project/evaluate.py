@@ -32,7 +32,12 @@ def get_latest_run_id(experiment_name: str) -> str:
 # Parse arguments
 # -----------------------------
 parser = argparse.ArgumentParser()
-parser.add_argument("--experiment_name", type=str, required=True, help="Name of the experiment where to assign the model.")
+parser.add_argument(
+    "--experiment_name"
+    ,type=str
+    ,required=True
+    ,help="We will evaluate the model from the latest run from the experiment specified by the experiment_name parameter."
+)
 args = parser.parse_args()
 
 
@@ -52,13 +57,6 @@ model_uri = f"runs:/{run_id}/lasso_model"
 loaded_model = mlflow.sklearn.load_model(model_uri)
 print(f"Loaded model from {model_uri}")
 print(f"MSE: {mse:.2f}, R^2: {r2:.2f}")
-
-# -----------------------------
-# Set the experiment
-# -----------------------------
-mlflow.set_experiment(f"{args.experiment_name}_eval")
-
-# with mlflow.start_run():
 
 # -----------------------------
 # Evaluate model

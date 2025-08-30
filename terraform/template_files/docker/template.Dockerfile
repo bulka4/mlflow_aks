@@ -22,9 +22,7 @@ RUN \
   # The k8s folder we will contain files related to deploying resources on Kubernetes
   mkdir /root/k8s && \
   # The mlflow_docker folder will contain files related to Docker images used by MLflow
-  mkdir /root/mlflow_docker && \
-  # The mlflow_project folder will contain files related to the MLflow project
-  mkdir /root/mlflow_project
+  mkdir /root/mlflow_docker
 
 
 
@@ -53,13 +51,6 @@ RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash && \
     az aks get-credentials \
       --resource-group ${rg_name} \
       --name ${aks_name}
-
-
-# Install mlflow
-RUN apt-get install -y python3 python3-pip python3-venv && \
-    python3 -m venv /root/mlflow_project/mlflow-env && \
-    source /root/mlflow_project/mlflow-env/bin/activate && \
-    pip install mlflow[extras]
 
 
 # Install kubectl for interacting with AKS
@@ -114,13 +105,11 @@ RUN \
 
 
 
-# ============ Copy folders with the MLflow project and MLflow Helm chart ==============
-
-COPY mlflow_project /root/mlflow_project
+# ============ Copy the folder with the MLflow Helm chart ==============
 COPY helm_charts /root/k8s/helm_charts
 
 
 
 
-# Run the script for building and pushing images to ACR.
-CMD ["/root/mlflow_docker/build_and_push.sh"]
+# Run the script for building and pushing images to ACR and start a bash session
+CMD ["bash", "-c", "/root/mlflow_docker/build_and_push.sh && /bin/bash"]
